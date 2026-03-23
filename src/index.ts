@@ -1,31 +1,57 @@
 import { tokenize } from "./core/lexer";
 import { SemanticRules } from "./core/parser";
+import { executeNLIDB } from "./core/generator";
 
-function test(query: string) {
-    console.log(`\n--- INPUT: "${query}" ---`);
-    try {
-        const tokens = tokenize(query);
-        const parser = new SemanticRules(tokens);
-        const ast = parser.parser();
-        console.log("AST Result:", JSON.stringify(ast, null, 2));
-    } catch (e: any) {
-        console.log("ERROR:", e.message);
+/**
+ * Fungsi pembantu untuk menjalankan proses NLIDB dari awal sampai akhir
+ */
+async function runNLIDB(input: string) {
+  console.log(`\n${"=".repeat(50)}`);
+  console.log(`🗣️  INPUT: "${input}"`);
+  console.log(`${"=".repeat(50)}`);
+
+  try {
+    // 1. Tokenisasi (Lexer)
+    const tokens = tokenize(input);
+    
+    // 2. Parsing (Ubah token menjadi AST)
+    const semanticParser = new SemanticRules(tokens);
+    const ast = semanticParser.parser();
+    
+    console.log("\n📦 Abstract Syntax Tree (AST):");
+    console.log(JSON.stringify(ast, null, 2));
+
+    // 3. Eksekusi (Generator & Supabase)
+    console.log("\n🚀 Mengeksekusi query ke Supabase...");
+    const data = await executeNLIDB(ast);
+
+    // 4. Tampilkan Hasil
+    console.log("\n✅ HASIL DARI DATABASE:");
+    if (data && data.length > 0) {
+      console.table(data);
+    } else {
+      console.log("Empty set (0 rows found).");
     }
+
+  } catch (error: any) {
+    console.error("\n❌ ERROR:", error.message);
+  }
 }
 
-// --- FINAL STRESS TEST ---
+/**
+ * Area Uji Coba
+ */
+async function main() {
+  // Ganti 'mahasiswa' dengan nama tabel yang ada di dashboard Supabase kamu
+  
+  // Tes 1: Ambil semua data
+  await runNLIDB("ambil semua dari tabel mahasiswa");
 
-// 1. Tes Operator Majemuk & Desimal (Memastikan combination logic di grammar.ts)
-test("tampilkan nama dari mahasiswa yang ipk lebih kecil sama dengan 3.5");
+  // Tes 2: Filter dengan operator
+  await runNLIDB("tampilkan nama dari mahasiswa yang ipk lebih besar dari 3.5");
 
-// 2. Tes Multiple Where dengan Connector (Memastikan trigger TKN_AND/TKN_OR di WhereRule)
-test("ambil nama dari user yang umur lebih besar dari 20 dan status sama dengan aktif");
+  // Tes 3: Order by dan Limit
+  await runNLIDB("cari nama dari mahasiswa urutkan berdasarkan nama desc batasi 2");
+}
 
-// 3. Tes Star Column (Memastikan logic TKN_STAR di parser.ts)
-test("ambil semua dari tabel dosen");
-
-// 4. Tes Order By & Limit (Memastikan OrderRule & LimitRule di grammar.ts)
-test("cari nama dari mahasiswa urutkan berdasarkan nama desc batasi 10");
-
-// 5. Tes Join (Memastikan JoinRule)
-test("tampilkan nama dari mahasiswa gabung hobi");
+main();   

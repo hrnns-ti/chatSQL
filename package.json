@@ -11,5 +11,9 @@
   "description": "",
   "devDependencies": {
     "tsx": "^4.21.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.3",
+    "dotenv": "^17.3.1"
   }
 }

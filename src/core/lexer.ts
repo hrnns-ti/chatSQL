@@ -40,7 +40,7 @@ function getTokenType(word: string) {
 
   if (state === 200) return "TKN_NUMBER"
 
-  if (word === ".") return "TKN_DOT";
+  if (word === ".") return "TKN_DOT"; 
   if (symbols[word]) return symbols[word];
 
   return "TKN_UNKNOWN"
