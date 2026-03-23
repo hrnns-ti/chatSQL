@@ -92,9 +92,12 @@ export const keywords: Record<string, string> = {
 
   // Perbandingan
   "KURANG": "TKN_LESS",
+  "KECIL": "TKN_LESS",
   "LEBIH": "TKN_MORE",
   "BESAR": "TKN_MORE",
-  "KECIL": "TKN_LESS"
+
+  "SEMUA": "TKN_STAR",
+  "*": "TKN_STAR"
 };
 
 export const symbols: Record<string, string> = {

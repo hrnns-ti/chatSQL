@@ -28,21 +28,30 @@ function getTokenType(word: string) {
       const keywordToken = keywords[input]
       if (keywordToken) return keywordToken
 
-      const closest = findKeywords(input)
-      if (closest) {console.log(`  [LOG] Menemukan kemiripan: "${word}" -> ${closest}`); return closest}
-      
+      if (input.length > 4) {
+        const closest = findKeywords(input)
+        if (closest) {
+          console.log(`  [LOG] Menemukan kemiripan: "${word}" -> ${closest}`); 
+          return closest
+        }
+      }
       return "TKN_IDENTIFIER"
     }
 
   if (state === 200) return "TKN_NUMBER"
 
+  if (word === ".") return "TKN_DOT";
+  if (symbols[word]) return symbols[word];
+
   return "TKN_UNKNOWN"
 
 }
 
-function tokenize(sentence: string) {
+export function tokenize(sentence: string) {
 
-  const words = sentence.split(/(\s+|[,.()=><*])/).filter(w => w && w.trim() !== "")
+  const words = sentence
+    .split(/(\s+|(?<=>|<=|>=|!=|<>)|(?<!>|<|!|=)(?=[,.()=><*])|(?<=[,.()=><*])(?![=]))/)
+    .filter(w => w && w.trim() !== "")
 
   const tokens = words.map(word => {
     return {
@@ -53,7 +62,3 @@ function tokenize(sentence: string) {
   return tokens
 
 }
-
-
-const hasil = tokenize("caari maba di tabel akademik, mahasiswa, dan universitasa lalu tampilkannz")
-console.log(hasil);
