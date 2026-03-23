@@ -89,6 +89,7 @@ export const keywords: Record<string, string> = {
   "TERKECIL": "TKN_MIN",
   "MAKSIMUM": "TKN_MAX",
   "TERBESAR": "TKN_MAX",
+    
 
   // Perbandingan
   "KURANG": "TKN_LESS",

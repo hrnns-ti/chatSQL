@@ -61,7 +61,7 @@ export const rules: grammarRules[] = [
       let operator = "=";
       let opTokens: string[] = [];
       const compareTypes = [
-        "TKN_LESS", "TKN_MORE", "TKN_SAME", "TKN_WITH", 
+        "TKN_LESS", "TKN_MORE", "TKN_SAME", "TKN_WITH", "TKN_NEQ", 
         "TKN_GT", "TKN_LT", "TKN_GTE", "TKN_LTE", "TKN_EQUALS", "TKN_NOT"
       ];
 
@@ -71,26 +71,13 @@ export const rules: grammarRules[] = [
       }
 
       const combination = opTokens.join(" ");
-      
-      // 1. Cek Kasus "Kecil/Kurang" Terlebih Dahulu (Agar tidak tertukar)
-      if (combination.includes("TKN_LTE") || (combination.includes("TKN_LESS") && combination.includes("TKN_SAME"))) {
-        operator = "<=";
-      } 
-      else if (combination.includes("TKN_GTE") || (combination.includes("TKN_MORE") && combination.includes("TKN_SAME"))) {
-        operator = ">=";
-      }
-      else if (combination.includes("TKN_LESS") || combination.includes("TKN_LT")) {
-        operator = "<";
-      }
-      else if (combination.includes("TKN_MORE") || combination.includes("TKN_GT")) {
-        operator = ">";
-      }
-      else if (combination.includes("TKN_NOT")) {
-        operator = "!=";
-      }
-      else {
-        operator = "=";
-      }
+      // Urutan pengecekan sangat penting: Cek yang majemuk dulu (GTE/LTE) sebelum tunggal (GT/LT)
+      if (combination.includes("TKN_GTE") || (combination.includes("TKN_MORE") && combination.includes("TKN_SAME"))) operator = ">=";
+      else if (combination.includes("TKN_LTE") || (combination.includes("TKN_LESS") && combination.includes("TKN_SAME"))) operator = "<=";
+      else if (combination.includes("TKN_MORE") || combination.includes("TKN_GT")) operator = ">";
+      else if (combination.includes("TKN_LESS") || combination.includes("TKN_LT")) operator = "<";
+      else if (combination.includes("TKN_NOT")) operator = "!=";
+      else operator = "=";
 
       let value = tokens[curr]?.value || "";
       if (tokens[curr + 1]?.type === "TKN_DOT") {
