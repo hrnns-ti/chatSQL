@@ -1,116 +1,65 @@
 export const keywords: Record<string, string> = {
-  // Manipulasi Data (DML)
-  "CARI": "TKN_SELECT",
+  // DDL & CRUD Inti
+  "BUAT_TABEL": "TKN_CREATE_TABLE",
+  "HAPUS_TABEL": "TKN_DROP_TABLE",
   "AMBIL": "TKN_SELECT",
-  "LIHAT": "TKN_SELECT",
-  "TAMPILKAN": "TKN_SELECT",
-  "TAMPILIN": "TKN_SELECT", 
-  "NYARI": "TKN_SELECT",
-  "SELEKSI": "TKN_SELECT",
-  "GET": "TKN_SELECT",
-
   "TAMBAH": "TKN_INSERT",
-  "MASUKKAN": "TKN_INSERT",
-  "MASUKIN": "TKN_INSERT",
-  "INPUT": "TKN_INSERT",
-  "SISIPKAN": "TKN_INSERT",
-  "SISIPIN": "TKN_INSERT",
-  "SELIPIN": "TKN_INSERT",
-  "TARUH": "TKN_INSERT",
-
   "UBAH": "TKN_UPDATE",
-  "GANTI": "TKN_UPDATE",
-  "PERBARUI": "TKN_UPDATE",
-  "UPDATE": "TKN_UPDATE",
-
   "HAPUS": "TKN_DELETE",
-  "HILANGKAN": "TKN_DELETE",
-  "BUANG": "TKN_DELETE",
-  "APUS": "TKN_DELETE",  
-  "BERSIHKAN": "TKN_DELETE",
-  "DELETE": "TKN_DELETE",
+  "KUNCI_UTAMA": "TKN_PRIMARY_KEY",
+  "MERUJUK_KE": "TKN_REFERENCES",
 
-  // Definisi Data
-  "BUAT": "TKN_CREATE",
-  "BIKIN": "TKN_CREATE",
-  
-  "DROP": "TKN_DROP",
-  
-  "DATABASE": "TKN_DATABASE",
-  "BASISDATA": "TKN_DATABASE",
-  
+  // Penunjuk Target
   "TABEL": "TKN_TABLE",
-  "TABLE": "TKN_TABLE",
-
   "KOLOM": "TKN_COLUMN",
-  "FIELD": "TKN_COLUMN",
-
-  // Klausa dan Penghubung
+  "NILAI": "TKN_VALUES",
   "DARI": "TKN_FROM",
-  "PADA": "TKN_FROM",
-  "DI": "TKN_FROM",
 
-  "KE": "TKN_INTO",
-  
-  "YANG": "TKN_WHERE",
-  "DIMANA": "TKN_WHERE",
-  "KONDISI": "TKN_WHERE",
-  "PAS": "TKN_WHERE",
-  "KETIKA": "TKN_WHERE",
-  
-  "ISI": "TKN_VALUES",
-  
-  "URUTKAN": "TKN_ORDER_BY",
-  "SUSUN": "TKN_ORDER_BY",
-  "SORTIR": "TKN_ORDER_BY",
-  
-  "BATASI": "TKN_LIMIT",
-  "SEBANYAK": "TKN_LIMIT",
-  
-  "GABUNG": "TKN_JOIN",
+  // Filter & Kondisi
+  "FILTER": "TKN_WHERE",
+  "SAMA_DENGAN": "TKN_EQ",
+  "TIDAK_SAMA": "TKN_NEQ",
+  "LEBIH_BESAR": "TKN_GT",
+  "LEBIH_BESAR_SAMA": "TKN_GTE",
+  "LEBIH_KECIL": "TKN_LT",
+  "LEBIH_KECIL_SAMA": "TKN_LTE",
+  "MENGANDUNG": "TKN_ILIKE",
+  "MIRIP": "TKN_LIKE",
+  "CARI_TEKS": "TKN_TEXT_SEARCH",
+  "TERMASUK_DALAM": "TKN_IN",
+  "TIDAK_TERMASUK": "TKN_NOT_IN",
+  "MEMUAT": "TKN_CONTAINS",
+  "ADALAH_KOSONG": "TKN_IS_NULL",
 
-  // Neutral Language
-  "DENGAN": "TKN_WITH", 
-  "SAMA": "TKN_SAME",
-
-  // Logic Operator
+  // Relasi & Logika
   "DAN": "TKN_AND",
-  "SERTA": "TKN_AND",
   "ATAU": "TKN_OR",
-  "BUKAN": "TKN_NOT",
-  "KECUALI": "TKN_NOT",
+  "GABUNG_TABEL": "TKN_JOIN",
 
-  // Agregasi
-  "HITUNG": "TKN_COUNT",
-  "JUMLAH": "TKN_COUNT",
-  "RATA": "TKN_AVG",
-  "TOTAL": "TKN_SUM",
-  "MINIMUM": "TKN_MIN",
-  "TERKECIL": "TKN_MIN",
-  "MAKSIMUM": "TKN_MAX",
-  "TERBESAR": "TKN_MAX",
-    
+  // Modifiers (Sorting & Pagination)
+  "URUTKAN": "TKN_ORDER_BY",
+  "NAIK": "TKN_ASC",
+  "TURUN": "TKN_DESC",
+  "BATASI": "TKN_LIMIT",
+  "RENTANG": "TKN_RANGE",
+  "SATU_SAJA": "TKN_SINGLE",
+  "MUNGKIN_SATU": "TKN_MAYBE_SINGLE",
+  "HITUNG_TOTAL": "TKN_COUNT",
 
-  // Perbandingan
-  "KURANG": "TKN_LESS",
-  "KECIL": "TKN_LESS",
-  "LEBIH": "TKN_MORE",
-  "BESAR": "TKN_MORE",
+  // Advanced
+  "SIMPAN_TIMPA": "TKN_UPSERT",
+  "JALANKAN_FUNGSI": "TKN_RPC",
 
+  // General
   "SEMUA": "TKN_STAR",
+  "UNIK": "TKN_DISTINCT",
   "*": "TKN_STAR"
 };
+
 
 export const symbols: Record<string, string> = {
   ",": "TKN_COMMA", 
   ".": "TKN_DOT", 
-  "=": "TKN_EQUALS", 
-  ">": "TKN_GT",
-  "<": "TKN_LT",
-  ">=": "TKN_GTE",
-  "<=": "TKN_LTE",
-  "!=": "TKN_NEQ",
-  "<>": "TKN_NEQ",
   "(": "TKN_LPAREN",
   ")": "TKN_RPAREN",
   "*": "TKN_STAR"

@@ -1,140 +1,151 @@
-import { queryAST, grammarRules } from "./types";
+import { grammarRules, queryAST } from "./types";
 
 export const rules: grammarRules[] = [
-  // 1. ATURAN OPERASI
   {
     name: "CommandRule",
-    trigger: ["TKN_SELECT", "TKN_INSERT", "TKN_UPDATE", "TKN_DELETE"],
-    handler: (tokens, i, ast) => {
-      ast.operation = tokens[i].type.replace("TKN_", "");
+    trigger: ["TKN_SELECT", "TKN_INSERT", "TKN_UPDATE", "TKN_DELETE", "TKN_CREATE_TABLE", "TKN_DROP_TABLE", "TKN_UPSERT", "TKN_RPC"],
+    // PERHATIKAN PENAMBAHAN TIPE DI SINI:
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      ast.operation = tokens[i].type.replace("TKN_", "") as any;
       return i;
     }
   },
 
-  // 2. ATURAN TABEL
   {
-    name: "EntityRule",
-    trigger: ["TKN_FROM"],
-    handler: (tokens, i, ast) => {
-      let next = i + 1;
-      // Skip filler words agar tidak dianggap nama tabel
-      while (tokens[next] && (tokens[next].value === "tabel" || tokens[next].value === "daftar")) next++;
-      if (tokens[next]) {
-        ast.table = tokens[next].value;
-        return next;
-      }
-      return i;
-    }
-  },
-
-  // 3. ATURAN RELASI
-  {
-    name: "JoinRule",
-    trigger: ["TKN_JOIN"], 
-    handler: (tokens, i, ast) => {
+    name: "RpcRule",
+    trigger: ["TKN_RPC"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
       if (tokens[i + 1]) {
-        ast.joins.push({
-          type: "INNER",
-          targetTable: tokens[i + 1].value,
-          on: ""
-        });
+        ast.functionName = tokens[i + 1].value;
         return i + 1;
       }
       return i;
     }
   },
 
-  // 4. ATURAN FILTER (WHERE) - FIXED LOGIC
   {
-    name: "WhereRule",
-    trigger: ["TKN_WHERE", "TKN_AND", "TKN_OR"], 
-    handler: (tokens, i, ast) => {
-      let curr = i;
-      const connector = tokens[curr].type === "TKN_OR" ? "OR" : "AND";
-      curr++; 
-
-      if (!tokens[curr] || tokens[curr].type === "TKN_FROM") return i;
-
-      const column = tokens[curr]?.value;
-      curr++;
-
-      let operator = "=";
-      let opTokens: string[] = [];
-      const compareTypes = [
-        "TKN_LESS", "TKN_MORE", "TKN_SAME", "TKN_WITH", "TKN_NEQ", 
-        "TKN_GT", "TKN_LT", "TKN_GTE", "TKN_LTE", "TKN_EQUALS", "TKN_NOT"
-      ];
-
-      while (tokens[curr] && (compareTypes.includes(tokens[curr].type) || tokens[curr].value === "dari")) {
-        opTokens.push(tokens[curr].type);
-        curr++;
-      }
-
-      const combination = opTokens.join(" ");
-      // Urutan pengecekan sangat penting: Cek yang majemuk dulu (GTE/LTE) sebelum tunggal (GT/LT)
-      if (combination.includes("TKN_GTE") || (combination.includes("TKN_MORE") && combination.includes("TKN_SAME"))) operator = ">=";
-      else if (combination.includes("TKN_LTE") || (combination.includes("TKN_LESS") && combination.includes("TKN_SAME"))) operator = "<=";
-      else if (combination.includes("TKN_MORE") || combination.includes("TKN_GT")) operator = ">";
-      else if (combination.includes("TKN_LESS") || combination.includes("TKN_LT")) operator = "<";
-      else if (combination.includes("TKN_NOT")) operator = "!=";
-      else operator = "=";
-
-      let value = tokens[curr]?.value || "";
-      if (tokens[curr + 1]?.type === "TKN_DOT") {
-        value += "." + (tokens[curr + 2]?.value || "");
-        curr += 2;
-      }
-
-      if (column && value && value !== "dari" && column !== "dari") {
-        ast.where.push({ 
-          column, 
-          operator, 
-          value: value.replace(/['"]/g, ""), 
-          connector 
-        });
-      }
-
-      return curr;
-    }
-  },
-
-  // 5. ATURAN PENGURUTAN (ORDER BY) - FIXED POINTER
-  {
-    name: "OrderRule",
-    // Pastikan Lexer menghasilkan TKN_ORDER_BY untuk kata "urutkan"
-    trigger: ["TKN_ORDER", "TKN_ORDER_BY"],
-    handler: (tokens, i, ast) => {
-      let curr = i + 1;
-      
-      // Bersihkan filler "berdasarkan" agar tidak masuk ke ast.columns
-      if (tokens[curr] && tokens[curr].value.toLowerCase() === "berdasarkan") {
-        curr++;
-      }
-      
-      if (tokens[curr]) {
-        const col = tokens[curr].value;
-        curr++;
-        
-        let mode: "ASC" | "DESC" = "ASC";
-        // Cek jika ada mode pengurutan setelah nama kolom
-        if (tokens[curr] && (tokens[curr].value.toLowerCase() === "desc" || tokens[curr].value.toLowerCase() === "turun")) {
-          mode = "DESC";
-          curr++;
-        }
-        
-        ast.orderBy = { column: col, mode };
-        return curr - 1; // Kembali ke index terakhir yang diproses
+    name: "EntityRule",
+    trigger: ["TKN_TABLE", "TKN_FROM"], 
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      if (tokens[i + 1]) {
+        ast.table = tokens[i + 1].value;
+        return i + 1;
       }
       return i;
     }
   },
 
-  // 6. ATURAN BATAS (LIMIT)
+  {
+    name: "DistinctRule",
+    trigger: ["TKN_DISTINCT"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      ast.distinct = true;
+      return i;
+    }
+  },
+
+  {
+    name: "PayloadRule",
+    trigger: ["TKN_VALUES"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      if (!ast.payload) ast.payload = {};
+      let curr = i + 1;
+      const stopTokens = ["TKN_WHERE", "TKN_ORDER_BY", "TKN_LIMIT", "TKN_RANGE", "TKN_TABLE", "TKN_SINGLE"];
+      
+      while (tokens[curr] && !stopTokens.includes(tokens[curr].type)) {
+        if (tokens[curr].type === "TKN_IDENTIFIER" && tokens[curr+1] && tokens[curr+1].type !== "TKN_COMMA") {
+          const colName = tokens[curr].value;
+          const valName = tokens[curr+1].value.replace(/['"]/g, "");
+          ast.payload[colName] = valName;
+          curr += 2; 
+        } else {
+          curr++;
+        }
+      }
+      return curr - 1; 
+    }
+  },
+
+  {
+    name: "JoinRule",
+    trigger: ["TKN_JOIN"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      if (tokens[i + 1]) {
+        ast.joins.push({ type: "RELATION", targetTable: tokens[i + 1].value });
+        return i + 1;
+      }
+      return i;
+    }
+  },
+
+  {
+    name: "WhereRule",
+    trigger: ["TKN_WHERE", "TKN_AND", "TKN_OR"], 
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      const connector = tokens[i].type === "TKN_WHERE" ? "AND" : tokens[i].type.replace("TKN_", "") as "AND" | "OR";
+      const columnToken = tokens[i + 1];
+      const operatorToken = tokens[i + 2];
+      const valueToken = tokens[i + 3];
+
+      if (columnToken && operatorToken) {
+        if (operatorToken.type === "TKN_IS_NULL") {
+          ast.where.push({ column: columnToken.value, operator: "is", value: null, connector });
+          return i + 2; 
+        }
+
+        if (valueToken) {
+          let operator = "=";
+          switch(operatorToken.type) {
+            case "TKN_EQ": operator = "="; break;
+            case "TKN_NEQ": operator = "!="; break;
+            case "TKN_GT": operator = ">"; break;
+            case "TKN_GTE": operator = ">="; break;
+            case "TKN_LT": operator = "<"; break;
+            case "TKN_LTE": operator = "<="; break;
+            case "TKN_ILIKE": operator = "ilike"; break;
+            case "TKN_LIKE": operator = "like"; break;
+            case "TKN_TEXT_SEARCH": operator = "textSearch"; break;
+            case "TKN_IN": operator = "in"; break;
+            case "TKN_NOT_IN": operator = "not.in"; break;
+            case "TKN_CONTAINS": operator = "cs"; break; 
+          }
+
+          ast.where.push({ 
+            column: columnToken.value, 
+            operator: operator, 
+            value: valueToken.value.replace(/['"]/g, ""), 
+            connector: connector 
+          });
+          return i + 3; 
+        }
+      }
+      return i;
+    }
+  },
+
+  {
+    name: "OrderRule",
+    trigger: ["TKN_ORDER_BY"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      const columnToken = tokens[i + 1];
+      const modeToken = tokens[i + 2];
+      if (columnToken) {
+        let mode: "ASC" | "DESC" = "ASC";
+        let jump = 1;
+        if (modeToken && modeToken.type === "TKN_DESC") { mode = "DESC"; jump = 2; } 
+        else if (modeToken && modeToken.type === "TKN_ASC") { jump = 2; }
+        
+        ast.orderBy = { column: columnToken.value, mode };
+        return i + jump; 
+      }
+      return i;
+    }
+  },
+
   {
     name: "LimitRule",
     trigger: ["TKN_LIMIT"],
-    handler: (tokens, i, ast) => {
-      // Menangani "batasi 10" atau "limit 10"
+    handler: (tokens: any[], i: number, ast: queryAST) => {
       if (tokens[i + 1]) {
         ast.limit = parseInt(tokens[i + 1].value);
         return i + 1;
@@ -143,13 +154,68 @@ export const rules: grammarRules[] = [
     }
   },
 
-  // 7. ATURAN DISTINCT
   {
-    name: "DistinctRule",
-    trigger: ["TKN_DISTINCT"],
-    handler: (tokens, i, ast) => {
-      ast.distinct = true;
+    name: "RangeRule",
+    trigger: ["TKN_RANGE"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      const fromToken = tokens[i + 1];
+      const toToken = tokens[i + 2];
+      if (fromToken && toToken) {
+        ast.range = { from: parseInt(fromToken.value), to: parseInt(toToken.value) };
+        return i + 2;
+      }
       return i;
+    }
+  },
+
+  {
+    name: "ModifierRule",
+    trigger: ["TKN_SINGLE", "TKN_MAYBE_SINGLE", "TKN_COUNT"],
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      if (!ast.modifiers) ast.modifiers = [];
+      if (tokens[i].type === "TKN_SINGLE") ast.modifiers.push("single");
+      if (tokens[i].type === "TKN_MAYBE_SINGLE") ast.modifiers.push("maybeSingle");
+      if (tokens[i].type === "TKN_COUNT") ast.modifiers.push("count");
+      return i; 
+    }
+  },
+
+  {
+    name: "DefinitionRule",
+    trigger: ["TKN_COLUMN"], 
+    handler: (tokens: any[], i: number, ast: queryAST) => {
+      let curr = i + 1;
+      while (tokens[curr]) {
+        if (tokens[curr].type === "TKN_IDENTIFIER" && tokens[curr+1] && tokens[curr+1].type !== "TKN_COMMA") {
+          const colDef: any = {
+            columnName: tokens[curr].value,
+            dataType: tokens[curr+1].value
+          };
+          curr += 2; 
+
+          while (tokens[curr] && tokens[curr].type !== "TKN_COMMA") {
+            if (tokens[curr].type === "TKN_PRIMARY_KEY") {
+              colDef.isPrimary = true;
+              curr++;
+            } else if (tokens[curr].type === "TKN_REFERENCES") {
+              if (tokens[curr+1]) {
+                colDef.references = tokens[curr+1].value;
+                curr += 2;
+              } else {
+                curr++;
+              }
+            } else {
+              curr++; 
+            }
+          }
+          ast.definitions.push(colDef);
+        } else if (tokens[curr].type === "TKN_COMMA") {
+          curr++; 
+        } else {
+          break; 
+        }
+      }
+      return curr - 1; 
     }
   }
 ];
