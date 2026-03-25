@@ -1,12 +1,19 @@
 import { grammarRules, queryAST } from "./types";
 
 export const rules: grammarRules[] = [
+  // 1. ATURAN COMMAND (Ditambah Penjebak Nama Tabel DDL)
   {
     name: "CommandRule",
     trigger: ["TKN_SELECT", "TKN_INSERT", "TKN_UPDATE", "TKN_DELETE", "TKN_CREATE_TABLE", "TKN_DROP_TABLE", "TKN_UPSERT", "TKN_RPC"],
-    // PERHATIKAN PENAMBAHAN TIPE DI SINI:
     handler: (tokens: any[], i: number, ast: queryAST) => {
       ast.operation = tokens[i].type.replace("TKN_", "") as any;
+      
+      if (tokens[i].type === "TKN_CREATE_TABLE" || tokens[i].type === "TKN_DROP_TABLE") {
+        if (tokens[i + 1] && tokens[i + 1].type === "TKN_IDENTIFIER") {
+          ast.table = tokens[i + 1].value;
+          return i + 1; // Lompat melewati nama tabel
+        }
+      }
       return i;
     }
   },

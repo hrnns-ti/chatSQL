@@ -36,7 +36,6 @@ testSuite.forEach((test, index) => {
   const parser = new SemanticRules(tokens);
   const ast = parser.parser();
   
-  // Clean up empty arrays/undefined for cleaner logs
   const cleanAST = Object.fromEntries(Object.entries(ast).filter(([_, v]) => 
     !(Array.isArray(v) && v.length === 0) && v !== null && v !== undefined
   ));
