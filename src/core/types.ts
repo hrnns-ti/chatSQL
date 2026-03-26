@@ -10,7 +10,7 @@ export interface queryAST {
   columns: string[]; 
   payload?: Record<string, any>; 
   
-  functionName?: string; // JANGAN LUPA INI (Untuk RPC)
+  functionName?: string;
   
   distinct?: boolean;
   limit?: number;
@@ -19,7 +19,7 @@ export interface queryAST {
     mode: "ASC" | "DESC";
   };
   
-  range?: { // JANGAN LUPA INI (Untuk Pagination)
+  range?: { 
     from: number;
     to: number;
   };
@@ -28,7 +28,7 @@ export interface queryAST {
   where: {
     column: string; 
     operator: string; 
-    value: any; // HARUS ANY (Supaya bisa nerima array untuk operasi IN)
+    value: any;
     connector: "AND" | "OR";
   }[];
 

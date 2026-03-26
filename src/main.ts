@@ -3,47 +3,61 @@ import { tokenize } from "./core/lexer";
 import { SemanticRules } from "./core/parser";
 import { executeNLIDB } from "./core/generator";
 
-import Table from 'cli-table3'
+import Table from 'cli-table3';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 
-const RESET = "\x1b[0m";
-const CYAN = "\x1b[36m";
-const YELLOW = "\x1b[33m";
-const GREEN = "\x1b[32m";
-const RED = "\x1b[31m";
-const MAGENTA = "\x1b[35m";
-const BOLD = "\x1b[1m";
-
+import chalk from 'chalk';
+import ora from 'ora';
+import figlet from 'figlet';
 
 const rl = readline.createInterface({ input, output });
 
+// ==========================================
+// THEME PALETTE (Sentralisasi Warna)
+// ==========================================
+const theme = {
+  appTitle: chalk.cyanBright.bold,
+  version: chalk.blueBright,
+  separator: chalk.dim.cyan,       // Garis pemisah yang tidak terlalu mencolok
+  userPrompt: chalk.greenBright.bold,
+  aiLabel: chalk.magentaBright.bold,
+  aiText: chalk.whiteBright,
+  spinner: 'cyan',                 // Warna untuk spinner 'ora'
+  success: chalk.greenBright,
+  warningText: chalk.yellowBright,
+  warningBg: chalk.bgYellow.black.bold,
+  errorText: chalk.redBright,
+  errorBg: chalk.bgRed.white.bold,
+  tableHeader: chalk.cyanBright.bold,
+  tableBorder: chalk.blue,         // Border biru memberikan kesan cyber/tech
+  infoLabel: chalk.blueBright.bold
+};
+
 async function runNLIDB(userInput: string) {
+  const spinner = ora({
+    text: theme.appTitle('Pabi sedang berpikir...'),
+    color: theme.spinner as any
+  }).start();
 
   try {
-    // 1. TAHAP TRANSLASI (AI ENGINE)
-    process.stdout.write(`${CYAN}LOG:${RESET} Pabi sedang berpikir... `);
+    // TRANSLASI (AI ENGINE)
     const { reply, bbn } = await PabiAI.process(userInput);
-    process.stdout.write(`${GREEN}DONE${RESET}\n`);
-
-    // console.log(`\nPABI: ${reply}`);
+    console.log(chalk.yellow(`\n[DEBUG RAW BBN DARI AI]: ${bbn}`));
     
     if (!bbn) {
+      spinner.stop();
       if (reply) {
-        console.log(`\n${MAGENTA}PABI:${RESET} ${reply.trim()}`);
+        console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(reply.trim())}`);
       } else {
-        console.log(`\n${RED}ERROR:${RESET} Pabi bingung mau jawab apa.`);
+        console.log(`\n${theme.errorBg(' ERROR ')} ${theme.errorText('Pabi bingung mau jawab apa.')}`);
       }
-      console.log(`${CYAN}--------------------------------------------------${RESET}\n`);
+      console.log(theme.separator('--------------------------------------------------\n'));
       return;
     }
 
-    // console.log(`${YELLOW}BBN:${RESET} ${bbn}`)
-    
-    // console.log(`⚙️  BBN : ${bbn}`);
-
-    // 2. TAHAP KOMPILASI (LEXER & PARSER)
-    // console.log(`\n... ⏳ Mesin Lexer & Parser sedang membedah sintaks ...`);
+    // KOMPILASI (LEXER & PARSER)
+    spinner.text = chalk.cyan('Menganalisis sintaks BBN...');
     const tokens = tokenize(bbn);
     const semantic = new SemanticRules(tokens);
     const ast = semantic.parser();
@@ -55,130 +69,128 @@ async function runNLIDB(userInput: string) {
 
     const destructiveOps = ['DELETE', 'DROP_TABLE'];
     if (destructiveOps.includes(ast.operation)) {
-      console.log(`\n${RED}${BOLD}PERINGATAN:${RESET} Operasi ${YELLOW}${ast.operation}${RESET} pada tabel ${YELLOW}${ast.table}${RESET} terdeteksi.`);
-      const answer = await rl.question(`${BOLD}Konfirmasi eksekusi? (y/n): ${RESET}`);
+      spinner.stop(); 
+      console.log(`\n${theme.warningBg(' PERINGATAN ')} Operasi ${theme.warningText(ast.operation)} pada tabel ${theme.warningText(ast.table)} terdeteksi.`);
+      
+      const answer = await rl.question(chalk.bold('Konfirmasi eksekusi? (y/n): '));
       
       if (answer.toLowerCase() !== 'y') {
-        console.log(`${MAGENTA}INFO: Operasi dibatalkan oleh pengguna.${RESET}\n`);
+        console.log(theme.warningText('INFO: Operasi dibatalkan oleh pengguna.\n'));
         return; 
       }
+      spinner.start('Melanjutkan eksekusi...');
     }
 
-    // console.log(`📦 AST TERBENTUK:`);
-    // console.log(`   - Operasi : ${ast.operation}`);
-    // console.log(`   - Tabel   : ${ast.table}`);
-    // if (ast.columns && ast.columns.length > 0) console.log(`   - Kolom   : ${JSON.stringify(ast.columns)}`);
-
-    // 3. TAHAP EKSEKUSI (GENERATOR & SUPABASE)
-    process.stdout.write(`${CYAN}LOG:${RESET} Menghubungi database... `);
+    // EKSEKUSI (GENERATOR & SUPABASE)
+    spinner.text = chalk.cyan('Menghubungi database...');
     const result = await executeNLIDB(ast);
-    process.stdout.write(`${GREEN}SUCCESS${RESET}\n`);
+    spinner.succeed(theme.success('Operasi Selesai'));
 
+    // Render Data
     if (Array.isArray(result) && result.length > 0) {
-      // Ambil header dari key object pertama
-      const headers = Object.keys(result[0]);
+
+      const flatResult = result.map((row: any) => {
+        const flatRow: any = {};
+        
+        for (const key in row) {
+          const value = row[key];
+          
+          // Jika value adalah object relasi (hasil JOIN)
+          if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+            // Bongkar isi object-nya dan gabungkan ke luar
+            for (const nestedKey in value) {
+              // Format nama kolom: NAMA_TABEL_RELASI_NAMA_KOLOM (contoh: JURUSAN_NAMA_JURUSAN)
+              const newColName = `${key.toUpperCase()}_${nestedKey.toUpperCase()}`;
+              flatRow[newColName] = value[nestedKey];
+            }
+          } else {
+            // Data normal biasa
+            flatRow[key.toUpperCase()] = value;
+          }
+        }
+        return flatRow;
+      });
+
+      const headers = Object.keys(flatResult[0]);
+      
       const table = new Table({
-        head: headers.map(h => `${YELLOW}${BOLD}${h.toUpperCase()}${RESET}`),
-        style: { head: [], border: [] }
+        head: headers.map(h => theme.tableHeader(h.toUpperCase())),
+        style: { 
+          head: [], 
+          border: [], 
+        },
+        chars: {
+          'top': theme.tableBorder('─'), 'top-mid': theme.tableBorder('┬'), 'top-left': theme.tableBorder('┌'), 'top-right': theme.tableBorder('┐'),
+          'bottom': theme.tableBorder('─'), 'bottom-mid': theme.tableBorder('┴'), 'bottom-left': theme.tableBorder('└'), 'bottom-right': theme.tableBorder('┘'),
+          'left': theme.tableBorder('│'), 'left-mid': theme.tableBorder('├'), 'mid': theme.tableBorder('─'), 'mid-mid': theme.tableBorder('┼'),
+          'right': theme.tableBorder('│'), 'right-mid': theme.tableBorder('┤'), 'middle': theme.tableBorder('│')
+        }
       });
 
-      // Isi data ke tabel
-      result.forEach((row: any) => {
-        table.push(Object.values(row).map(v => v === null ? '-' : String(v)));
+      flatResult.forEach((row: any) => {
+        table.push(Object.values(row).map(v => v === null ? chalk.dim('-') : String(v)));
       });
 
-      console.log(`\n${GREEN}${BOLD}HASIL DATA:${RESET}`);
+      // result.forEach((row: any) => {
+      //   table.push(Object.values(row).map(v => {
+      //     if (v === null) return chalk.dim('-');
+          
+      //     if (typeof v === 'object' && !Array.isArray(v)) {
+      //       return chalk.cyan(JSON.stringify(v).replace(/["{}]/g, '')); 
+      //     }
+          
+      //     return String(v);
+      //   }));
+      // });
+
+      console.log(`\n${theme.success.bold('HASIL DATA:')}`);
       console.log(table.toString()); 
+
     } else if (result === null || (Array.isArray(result) && result.length === 0)) {
-        console.log(`\n${YELLOW}INFO: Tidak ada data yang ditemukan atau operasi berhasil dilakukan.${RESET}`);
+        console.log(`\n${theme.infoLabel('INFO:')} ${chalk.white('Tidak ada data yang ditemukan atau operasi berhasil dilakukan.')}`);
     } else {
-        console.log(`\n${GREEN}${BOLD}HASIL DATA:${RESET}`);
+        console.log(`\n${theme.success.bold('HASIL DATA:')}`);
         console.dir(result, { depth: null, colors: true });
     }
 
-    // if (reply) {
-    //     console.log(`\n${MAGENTA}PABI:${RESET} ${reply.split('\n')[0-1]}`); // Ambil kalimat pertama aja biar gak kepanjangan
-    // }
-
-    // console.log(`\n${GREEN}${BOLD}HASIL DATA:${RESET}`);
-    // console.dir(result, { depth: null, colors: true });
-
+    // Balasan Pabi
     const shortReply = reply.split('\n')[0];
     if (reply) {
-        console.log(`\n${MAGENTA}PABI:${RESET} ${shortReply}`);
+        console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(shortReply)}`);
     }
 
   } catch (error: any) {
-    // 4. TAHAP ERROR HANDLING (PABI EXPLAINER)
+    // ERROR HANDLING
     const rawError = error.message || String(error);
-    console.log(`\n${RED}${BOLD}ERROR SYSTEM:${RESET} ${rawError}`);
+    spinner.fail(`${theme.errorBg(' ERROR SYSTEM ')} ${theme.errorText(rawError)}`);
     
-    process.stdout.write(`${CYAN}LOG:${RESET} Menganalisis penyebab... `);
-    // console.log(`... ⏳ Pabi menganalisis error ...`);
+    const explainSpinner = ora({ text: chalk.yellow('Menganalisis penyebab error...'), color: 'yellow' }).start();
     const explanation = await PabiAI.explainError(userInput, rawError);
-    process.stdout.write(`${GREEN}OK${RESET}\n`);
+    explainSpinner.succeed(theme.warningText('Analisis selesai'));
 
-    
-    console.log(`\n${MAGENTA}PABI:${RESET} ${explanation}\n`);
+    console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(explanation)}\n`);
   }
-  console.log(`${CYAN}--------------------------------------------------${RESET}\n`);
+  console.log(theme.separator('--------------------------------------------------\n'));
 }
-
 
 async function start() {
   process.stdout.write('\x1Bc');
-  // console.log("🚀 MEMULAI ULTIMATE STRESS TEST (MENGUJI SELURUH KITAB BBN)...\n");
 
-  console.log(`${CYAN}${BOLD}NLIDB ENGINE v1.0.0${RESET}`);
-  console.log(`${CYAN}Ketik perintah dalam bahasa indonesia (atau 'exit' untuk keluar)${RESET}`);
-  console.log(`${CYAN}--------------------------------------------------${RESET}\n`);
-
-  // const stressTests = [
-    // // 🧪 TEST 1: ATURAN 1 & 4 (AMBIL KOLOM SPESIFIK & RELASI)
-    // "Bro, AMBIL kolom nama sama nim dari TABEL mahasiswa dan jurusan ya",
-
-    // // 🧪 TEST 2: ATURAN 2 (TAMBAH DATA DENGAN NILAI)
-    // "Tolong TAMBAH TABEL portofolio dong, kasih NILAI judulnya 'Terminal Cyber', deskripsi 'Portofolio ala hacker UI', kasih id nya 33333333-2222-2222-2222-222222222222",
-
-    // // 🧪 TEST 3: ATURAN 3 (FILTER KOMPLEKS: MENGANDUNG, ATAU, LEBIH_BESAR_SAMA)
-    // "Cariin di TABEL mahasiswa, FILTER yang namanya MENGANDUNG 'Haerunnas' ATAU ipknya LEBIH_BESAR_SAMA '3.8'",
-
-    // // 🧪 TEST 4: ATURAN 5 (PENGURUTAN & RENTANG DATA)
-    // "AMBIL SEMUA data dari TABEL portofolio, URUTKAN judul NAIK, terus kasih RENTANG dari 0 sampai 5 aja bro",
-
-    // // 🧪 TEST 5: ATURAN 1 & 6 (HAPUS DATA & MODIFIER SATU SAJA)
-    // // Kita tes apakah dia bisa nangkep kata modifier di akhir
-    // "AMBIL TABEL mahasiswa, FILTER nim SAMA_DENGAN '11223344', ambil SATU_SAJA",
-
-    // // 🧪 TEST 6: ATURAN 7 (DDL: BUAT TABEL & KUNCI UTAMA)
-    // // Skenario: Lo bikin tabel buat divisi cyber GDGoC
-    // "Bantuin BUAT_TABEL divisi_cyber dong bro, KOLOM id int KUNCI_UTAMA, terus kolom nama varchar",
-
-    // // 🧪 TEST 7: ATURAN 6 & 7 (RPC & DROP TABLE)
-    // "HAPUS_TABEL divisi_cyber dong bro, udah nggak kepake"
-
-    // "Bro, bikinin tabel baru dong namanya jadwal, isinya id tipe angka sebagai primary key, terus nama_matkul pakai text, dan waktu pakai tanggal ya.",
-
-    // 🧪 TEST 7: ATURAN 6 & 7 (DROP TABLE) - VERSI TONGKRONGAN
-    // Persiapan buat fitur "Konfirmasi" yang bakal lo bangun nanti.
-    // "Bro, tolong hapus tabel portofolio dong."
-
-    // "Bro, tolong dong ubah ipk si Haerunnas jadi 3.95, dia itu mahasiswa yang nim nya 11223344 di tabel mahasiswa"
-  // ];
-
-  // for (let i = 0; i < stressTests.length; i++) {
-  //   console.log(`\n🔥 STRESS TEST #${i + 1}`);
-  //   await runNLIDB(stressTests[i]);
-    
-    // Jeda 4 detik biar Llama gak ngos-ngosan dan API aman
-    // await new Promise(resolve => setTimeout(resolve, 4000)); 
-  // }
+  // Banner dirender dengan warna utama
+  console.log(
+    theme.appTitle(
+      figlet.textSync('PABI DATABASE', { horizontalLayout: 'full' })
+    )
+  );
+  console.log(theme.version('v2.0.1'));
+  console.log(chalk.dim('Ketik perintah dalam bahasa indonesia (atau \'exit\' untuk keluar)'));
+  console.log(theme.separator('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
 
   while (true) {
-    const userInput = await rl.question(`\n${GREEN}${BOLD}USER > ${RESET}`);
+    const userInput = await rl.question(`\n${theme.userPrompt('USER > ')}`);
 
     if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-      console.log(`\n${YELLOW}Mematikan sistem... Sampai jumpa, bro.${RESET}`);
+      console.log(`\n${theme.warningText('Pabi mau tidur... Tata.')}`);
       rl.close();
       break;
     }

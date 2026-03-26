@@ -1,15 +1,9 @@
 import { queryAST } from "./types";
-import { supabase } from "../lib/supabase"; // Sesuaikan path jika berbeda
+import { supabase } from "../lib/supabase";
 
-/**
- * Mesin Eksekusi NLIDB -> Supabase API
- * Mengubah AST menjadi Method Chaining Supabase.
- */
 export async function executeNLIDB(ast: queryAST) {
   
-  // ==========================================
   // 1. TAHAP DDL (CREATE/DROP TABLE) & RPC
-  // ==========================================
   
   // DDL membutuhkan raw SQL execution via RPC (karena PostgREST tidak support DDL native)
   if (ast.operation === "CREATE_TABLE") {
@@ -35,15 +29,11 @@ export async function executeNLIDB(ast: queryAST) {
     return await supabase.rpc(ast.functionName, ast.payload || {});
   }
 
-  // ==========================================
   // 2. INISIALISASI ENTITAS (Tabel Target)
-  // ==========================================
   if (!ast.table) throw new Error("TABLE_NOT_FOUND");
   let query: any = supabase.from(ast.table.trim());
 
-  // ==========================================
   // 3. TAHAP OPERASI INTI (CRUD)
-  // ==========================================
   switch (ast.operation) {
     case "SELECT":
       let selectStr = ast.columns.length > 0 ? ast.columns.join(", ") : "*";
@@ -55,7 +45,6 @@ export async function executeNLIDB(ast: queryAST) {
         ast.joins.forEach((j: any) => { selectStr += `, ${j.targetTable}(*)`; });
       }
       
-      // Jika butuh perhitungan Exact Count
       if (ast.modifiers?.includes("count")) {
         query = query.select(selectStr, { count: 'exact' });
       } else {
@@ -80,9 +69,7 @@ export async function executeNLIDB(ast: queryAST) {
       break;
   }
 
-  // ==========================================
   // 4. TAHAP FILTERING (WHERE CLAUSE)
-  // ==========================================
   if (ast.where && ast.where.length > 0) {
     ast.where.forEach((filter) => {
       switch (filter.operator) {
@@ -116,9 +103,7 @@ export async function executeNLIDB(ast: queryAST) {
     });
   }
 
-  // ==========================================
   // 5. TAHAP MODIFIERS (Order, Limit, Range, dll)
-  // ==========================================
   if (ast.orderBy) {
     query = query.order(ast.orderBy.column, { ascending: ast.orderBy.mode === "ASC" });
   }
@@ -132,9 +117,7 @@ export async function executeNLIDB(ast: queryAST) {
     if (ast.modifiers.includes("maybeSingle")) query = query.maybeSingle();
   }
 
-  // ==========================================
   // 6. EKSEKUSI FINAL
-  // ==========================================
   const { data, error, count } = await query;
 
   if (error) throw error;

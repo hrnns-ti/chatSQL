@@ -2,9 +2,14 @@ import ollama from 'ollama';
 import { keywords } from '../constants/aliases';
 import { aiPromptRules } from './bbn-syntax';
 
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant', content: string }
+
 export class PabiAI {
+  private static chatHistory: ChatMessage[] = [];
+  private static MAX_HISTORY = 10;
+
   static async process(userInput: string): Promise<{ reply: string, bbn?: string }> {
-    
     // 1. Ambil keyword legal secara dinamis, filter out symbol '*'
     const legalKeywords = Object.keys(keywords).filter(k => k !== "*").join(", ");
 
@@ -24,7 +29,6 @@ TUGAS UTAMA: Terjemahkan kalimat bahasa Indonesia menjadi format teks BBN murni 
 
 📚 KATA KUNCI LEGAL: 
 ${legalKeywords}
-
 ${aiPromptRules}
 
 💡 CONTOH WAJIB (IKUTI POLA INI 100%):
@@ -39,22 +43,31 @@ User: "Cariin mahasiswa yang ipk nya di atas 3.5 terus urutin ipknya dari yang p
 [BBN] AMBIL TABEL mahasiswa FILTER ipk LEBIH_BESAR 3.5 URUTKAN ipk TURUN [/BBN]
 `;
 
+    this.chatHistory.push({ role: 'user', content: userInput });
+
+    if (this.chatHistory.length > this.MAX_HISTORY) {
+      this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY);
+    }
+
     try {
-      // 3. Panggil Llama 3.1 8B via Ollama
+      const messagesToSend: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
+        ...this.chatHistory
+      ];
+
       const response = await ollama.chat({
         model: 'llama3.1:8b', 
-        messages: [
-          { role: 'system', content: systemPrompt }, 
-          { role: 'user', content: userInput }
-        ],
+        messages: messagesToSend,
         options: { 
           temperature: 0,
           top_p: 0.1
         } 
       });
 
-      const fullText = response.message.content;
 
+      const fullText = response.message.content;
+      this.chatHistory.push({role: 'assistant', content: fullText})
+      
       // debug output asli Llama
       // console.log("--- DEBUG RAW LLAMA OUTPUT ---");
       // console.log(fullText);
@@ -88,7 +101,7 @@ Cukup bilang misalnya: "Tabelnya gak ada bro" atau "Query lo ada yang kurang tuh
       const response = await ollama.chat({
         model: 'llama3.1:8b',
         messages: [{ role: 'user', content: errorPrompt }],
-        options: { temperature: 0.4 } // Suhu agak dinaikin biar balasannya lebih luwes
+        options: { temperature: 0.4 }
       });
       return response.message.content.trim();
     } catch {

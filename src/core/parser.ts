@@ -1,5 +1,3 @@
-// parser.ts
-
 import { queryAST } from "./types";
 import { rules } from "./grammar";
 

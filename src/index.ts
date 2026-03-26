@@ -43,7 +43,7 @@ async function processQuery(query: string) {
         console.log(`- Columns:`, ast.columns);
         console.log(`- Where:  `, JSON.stringify(ast.where));
         console.log(`- Limit:  `, ast.limit);
-        currentTable = ast.table || ""; // Simpan untuk log error nanti
+        currentTable = ast.table || "";
         
         console.log(`${COLORS.MAGENTA}${COLORS.BOLD}[PARSER]${COLORS.RESET} AST Created ${COLORS.WHITE}(Op: ${ast.operation})${COLORS.RESET}`);
         
@@ -81,7 +81,7 @@ async function processQuery(query: string) {
         else if (e.code === "PGRST116") {
             console.log(`${COLORS.RED}Tabel "${COLORS.BOLD}${currentTable}${COLORS.RESET}${COLORS.RED}" tidak ditemukan di database.${COLORS.RESET}`);
         }
-        // 3. FALLBACK: Tampilkan pesan asli Supabase agar kita tahu salahnya di mana
+        // 3. FALLBACK: Tampilkan pesan asli Supabase
         else {
             console.log(`${COLORS.RED}${COLORS.BOLD}Pesan Database:${COLORS.RESET} ${COLORS.YELLOW}${e.message}${COLORS.RESET}`);
             if (e.hint) console.log(`${COLORS.WHITE}Hint: ${e.hint}${COLORS.RESET}`);
