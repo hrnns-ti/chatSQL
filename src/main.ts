@@ -10,6 +10,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import chalk from 'chalk';
 import ora from 'ora';
 import figlet from 'figlet';
+import { getSchema } from "./core/database";
 
 const rl = readline.createInterface({ input, output });
 
@@ -19,18 +20,18 @@ const rl = readline.createInterface({ input, output });
 const theme = {
   appTitle: chalk.cyanBright.bold,
   version: chalk.blueBright,
-  separator: chalk.dim.cyan,       // Garis pemisah yang tidak terlalu mencolok
+  separator: chalk.dim.cyan,
   userPrompt: chalk.greenBright.bold,
   aiLabel: chalk.magentaBright.bold,
   aiText: chalk.whiteBright,
-  spinner: 'cyan',                 // Warna untuk spinner 'ora'
+  spinner: 'cyan',          
   success: chalk.greenBright,
   warningText: chalk.yellowBright,
   warningBg: chalk.bgYellow.black.bold,
   errorText: chalk.redBright,
   errorBg: chalk.bgRed.white.bold,
   tableHeader: chalk.cyanBright.bold,
-  tableBorder: chalk.blue,         // Border biru memberikan kesan cyber/tech
+  tableBorder: chalk.blue,
   infoLabel: chalk.blueBright.bold
 };
 
@@ -42,7 +43,8 @@ async function runNLIDB(userInput: string) {
 
   try {
     // TRANSLASI (AI ENGINE)
-    const { reply, bbn } = await PabiAI.process(userInput);
+    const currSchema = await getSchema()
+    const { reply, bbn } = await PabiAI.process(userInput, currSchema);
     console.log(chalk.yellow(`\n[DEBUG RAW BBN DARI AI]: ${bbn}`));
     
     if (!bbn) {

@@ -1,5 +1,5 @@
 import { queryAST } from "./types";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../net/supabase";
 
 export async function executeNLIDB(ast: queryAST) {
   

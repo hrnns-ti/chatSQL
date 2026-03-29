@@ -1,6 +1,6 @@
 import ollama from 'ollama';
 import { keywords } from '../constants/aliases';
-import { aiPromptRules } from './bbn-syntax';
+import { aiPromptRules } from '../constants/bbn-syntax';
 
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant', content: string }
@@ -9,7 +9,12 @@ export class PabiAI {
   private static chatHistory: ChatMessage[] = [];
   private static MAX_HISTORY = 10;
 
-  static async process(userInput: string): Promise<{ reply: string, bbn?: string }> {
+  static async process(userInput: string, dbSchema: any[]): Promise<{ reply: string, bbn?: string }> {
+    // Cari nama nama tabel (bismillah jadi)
+    const schemaContext = dbSchema.map(table =>
+      `- Tabel: ${table.table_name} (Kolom: ${table.columns.join(', ')})`
+    )
+    
     // 1. Ambil keyword legal secara dinamis, filter out symbol '*'
     const legalKeywords = Object.keys(keywords).filter(k => k !== "*").join(", ");
 
@@ -26,6 +31,9 @@ TUGAS UTAMA: Terjemahkan kalimat bahasa Indonesia menjadi format teks BBN murni 
 - DILARANG mengarang entitas (nama tabel/kolom/nilai). Gunakan hanya yang ada di teks user.
 - Jika user minta hapus tabel, langsung keluarkan: [BBN] HAPUS_TABEL nama_tabel [/BBN].
 - DILARANG menggunakan tag lain seperti [TABLE].
+
+STRUKTUR DATABASE SAAT INI (Gunakan HANYA ini):
+${schemaContext}
 
 📚 KATA KUNCI LEGAL: 
 ${legalKeywords}
