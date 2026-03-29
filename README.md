@@ -42,6 +42,8 @@ PABI doesn't just "guess" SQL. It follows a rigorous compilation pipeline:
 
 #### ⚙️ Installation
 
+> for detailed explanation [GUIDE](GUIDE.md)
+
 ```bash
 # Clone the repository
 git clone https://github.com/haerunnas/nlidb.git
