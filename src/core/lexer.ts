@@ -1,4 +1,4 @@
-import { keywords, symbols } from "../constants/aliases";
+import { keywords, symbols } from "../constants/aliases.js";
 
 export function tokenize(sentence: string) {
 

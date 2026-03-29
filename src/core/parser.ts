@@ -1,5 +1,5 @@
-import { queryAST } from "./types";
-import { rules } from "./grammar";
+import { queryAST } from "./types.js";
+import { rules } from "./grammar.js";
 
 export class SemanticRules {
   private tokens: any[];

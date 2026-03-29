@@ -1,16 +1,21 @@
-import { PabiAI } from "./core/ai-engine";
-import { tokenize } from "./core/lexer";
-import { SemanticRules } from "./core/parser";
-import { executeNLIDB } from "./core/generator";
+#!/usr/bin/env node
+
+import { PabiAI } from "./core/ai-engine.js";
+import { tokenize } from "./core/lexer.js";
+import { SemanticRules } from "./core/parser.js";
+import { executeNLIDB } from "./core/generator.js";
 
 import Table from 'cli-table3';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import chalk from 'chalk';
 import ora from 'ora';
-import figlet from 'figlet';
-import { getSchema } from "./core/database";
+import { getSchema } from "./core/database.js";
 
 const rl = readline.createInterface({ input, output });
 
@@ -35,6 +40,10 @@ const theme = {
   infoLabel: chalk.blueBright.bold
 };
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const packagePath = join(__dirname, '../package.json'); 
+const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+
 async function runNLIDB(userInput: string) {
   const spinner = ora({
     text: theme.appTitle('Pabi sedang berpikir...'),
@@ -45,21 +54,21 @@ async function runNLIDB(userInput: string) {
     // TRANSLASI (AI ENGINE)
     const currSchema = await getSchema()
     const { reply, bbn } = await PabiAI.process(userInput, currSchema);
-    console.log(chalk.yellow(`\n[DEBUG RAW BBN DARI AI]: ${bbn}`));
+    // console.log(chalk.yellow(`\n[DEBUG RAW BBN DARI AI]: ${bbn}`));
     
     if (!bbn) {
       spinner.stop();
       if (reply) {
-        console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(reply.trim())}`);
+        console.log(`\n${theme.aiLabel((' PABI ') + ('❯ '))} ${theme.aiText(reply.trim())}`);
       } else {
         console.log(`\n${theme.errorBg(' ERROR ')} ${theme.errorText('Pabi bingung mau jawab apa.')}`);
       }
-      console.log(theme.separator('--------------------------------------------------\n'));
+      // console.log(theme.separator('--------------------------------------------------\n'));
       return;
     }
 
     // KOMPILASI (LEXER & PARSER)
-    spinner.text = chalk.cyan('Menganalisis sintaks BBN...');
+    spinner.text = chalk.cyan('Menganalisis sintaks BLINC...');
     const tokens = tokenize(bbn);
     const semantic = new SemanticRules(tokens);
     const ast = semantic.parser();
@@ -156,7 +165,7 @@ async function runNLIDB(userInput: string) {
     }
 
     // Balasan Pabi
-    const shortReply = reply.split('\n')[0];
+    const shortReply = reply;
     if (reply) {
         console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(shortReply)}`);
     }
@@ -172,34 +181,39 @@ async function runNLIDB(userInput: string) {
 
     console.log(`\n${theme.aiLabel('PABI:')} ${theme.aiText(explanation)}\n`);
   }
-  console.log(theme.separator('--------------------------------------------------\n'));
 }
 
 async function start() {
   process.stdout.write('\x1Bc');
 
-  // Banner dirender dengan warna utama
-  console.log(
-    theme.appTitle(
-      figlet.textSync('PABI DATABASE', { horizontalLayout: 'full' })
-    )
-  );
-  console.log(theme.version('v2.0.1'));
-  console.log(chalk.dim('Ketik perintah dalam bahasa indonesia (atau \'exit\' untuk keluar)'));
-  console.log(theme.separator('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+  // Banner
+  console.log('\n ' + chalk.bgBlue.white.bold(' PABI ') + chalk.bgWhite.black(' DATABASE ') + chalk.dim(` v${packageJson.version}`));
+  console.log(chalk.blue(' ─── ') + chalk.dim('Supabase-Augmented Bridge Intelligence'));
+  console.log(chalk.dim(' 💡 Hint: Ketik "Bantu saya" untuk melihat skema database\n\n'));
 
   while (true) {
-    const userInput = await rl.question(`\n${theme.userPrompt('USER > ')}`);
+    const input = await rl.question(chalk.cyan.bold(' USER ') + chalk.blue('❯ '));
+    const cleanInput = input.trim();
 
-    if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-      console.log(`\n${theme.warningText('Pabi mau tidur... Tata.')}`);
+    // 1. CEK APAKAH USER MAU KELUAR (Exit Logic)
+    if (cleanInput.toLowerCase() === 'exit' || cleanInput.toLowerCase() === 'quit') {
+      const spinner = ora({
+        text: chalk.cyan('Pabi sedang merapikan catatan...'),
+        color: 'cyan'
+      }).start();
+
+      await delay(2000)
+      spinner.stop();
+
+      console.log(`\n${chalk.yellow(' Pabi mau tidur... Tata!')}\n`);
       rl.close();
       break;
     }
 
-    if (!userInput.trim()) continue;
+    if (!cleanInput) continue;
 
-    await runNLIDB(userInput);
+    await runNLIDB(cleanInput);
+    console.log(chalk.dim('\n'));
   }
 }
 

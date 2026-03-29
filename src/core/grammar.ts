@@ -1,4 +1,4 @@
-import { grammarRules, queryAST } from "./types";
+import { grammarRules, queryAST } from "./types.js";
 
 export const rules: grammarRules[] = [
   // 1. ATURAN COMMAND (Ditambah Penjebak Nama Tabel DDL)

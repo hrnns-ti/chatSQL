@@ -1,5 +1,5 @@
-import { queryAST } from "./types";
-import { supabase } from "../net/supabase";
+import type { queryAST } from "./types.js";
+import { supabase } from "../net/supabase.js";
 
 export async function executeNLIDB(ast: queryAST) {
   
@@ -38,8 +38,11 @@ export async function executeNLIDB(ast: queryAST) {
     case "SELECT":
       let selectStr = ast.columns.length > 0 ? ast.columns.join(", ") : "*";
       // Inject DISTINCT jika diminta
-      if (ast.distinct) selectStr = selectStr.replace(ast.columns[0], `DISTINCT ${ast.columns[0]}`);
-      
+      if (ast.distinct && ast.columns && ast.columns[0]) {
+        const firstCol = ast.columns[0];
+        selectStr = selectStr.replace(firstCol, `DISTINCT ${firstCol}`);
+      }
+
       // Inject RELASI (Joins)
       if (ast.joins && ast.joins.length > 0) {
         ast.joins.forEach((j: any) => { selectStr += `, ${j.targetTable}(*)`; });

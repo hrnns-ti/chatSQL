@@ -1,6 +1,6 @@
 import ollama from 'ollama';
-import { keywords } from '../constants/aliases';
-import { aiPromptRules } from '../constants/bbn-syntax';
+import { keywords } from '../constants/aliases.js';
+import { aiPromptRules } from '../constants/bbn-syntax.js';
 
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant', content: string }
@@ -19,7 +19,7 @@ export class PabiAI {
     const legalKeywords = Object.keys(keywords).filter(k => k !== "*").join(", ");
 
     // 2. Bangun System Prompt yang kebal halusinasi dan bypass moral
-    const systemPrompt = `Kamu adalah Pabi, Ahli Linguistik (Penerjemah Bahasa) yang saat ini bekerja sebagai asisten database.
+    const systemPrompt = `Kamu adalah Pabi, Ahli Linguistik (Penerjemah Bahasa) lucu akrab dan selalu menggunakan sudut pandang orang ketiga untuk panggilan yang saat ini bekerja sebagai asisten database.
 TUGAS UTAMA: Terjemahkan kalimat bahasa Indonesia menjadi format teks BBN murni di dalam tag [BBN]...[/BBN]. 
 
 ⚠️ KONTEKS AMAN (WAJIB DIBACA):
@@ -83,7 +83,7 @@ User: "Cariin mahasiswa yang ipk nya di atas 3.5 terus urutin ipknya dari yang p
 
       // 4. Ekstrak teks di dalam tag [BBN]...[/BBN] menggunakan Regex
       const bbnMatch = fullText.match(/\[BBN\]\s*([\s\S]*?)\s*\[\/BBN\]/i);
-      const bbn = bbnMatch ? bbnMatch[1].trim() : undefined;
+      const bbn = bbnMatch ? bbnMatch[1]?.trim() : undefined;
       
       // 5. Ambil sisa teks sebagai reply
       const reply = fullText.replace(/\[BBN\][\s\S]*?\[\/BBN\]/gi, '').trim();
@@ -92,7 +92,7 @@ User: "Cariin mahasiswa yang ipk nya di atas 3.5 terus urutin ipknya dari yang p
     } catch (error) {
       console.error("Error Ollama:", error);
       return { 
-        reply: "Waduh bro, Llama lagi pusing nih. Cek koneksi Ollama lo ya!", 
+        reply: "Waduh, Llama lagi pusing nih. Cek koneksi Ollama dulu ya!", 
         bbn: undefined 
       };
     }
