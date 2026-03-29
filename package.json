@@ -7,11 +7,17 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
     "start": "node dist/main.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
   },
   "bin": {
     "pabi": "./dist/main.js"
   },
+  "files": [
+    "dist/",
+    "package.json",
+    "README.md"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",

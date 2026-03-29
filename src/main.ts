@@ -8,10 +8,12 @@ import { executeNLIDB } from "./core/generator.js";
 import Table from 'cli-table3';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+
+
 
 import chalk from 'chalk';
 import ora from 'ora';
@@ -185,6 +187,33 @@ async function runNLIDB(userInput: string) {
 
 async function start() {
   process.stdout.write('\x1Bc');
+
+  if (!existsSync('.env')) {
+    console.log('\n' + chalk.bgYellow.black.bold(' PABI INITIAL CONFIGURATION '));
+    console.log(chalk.yellow(" Halo! Sepertinya ini pertama kali kamu pakai PABI atau file .env hilang."));
+    console.log(chalk.dim("Silakan masukkan kredensial Supabase kamu untuk melanjutkan.\n"));
+    
+    const url = await rl.question(chalk.blue(' ➤ ') + "Masukkan Supabase URL: ");
+    const key = await rl.question(chalk.blue(' ➤ ') + "Masukkan Service Role Key: ");
+    
+    if (url.trim() && key.trim()) {
+      // Buat konten .env
+      const envContent = `SUPABASE_URL=${url.trim()}\nSUPABASE_SERVICE_ROLE_KEY=${key.trim()}`;
+      
+      try {
+        writeFileSync('.env', envContent);
+        console.log(chalk.green("\n Config berhasil disimpan ke file .env!"));
+        console.log(chalk.cyan(" Silakan jalankan kembali command 'pabi' untuk mulai.\n"));
+      } catch (err) {
+        console.log(chalk.red(`\n Gagal menulis file .env: ${err}`));
+      }
+    } else {
+      console.log(chalk.red("\n Setup dibatalkan. URL dan Key wajib diisi agar PABI bisa bekerja."));
+    }
+    
+    rl.close();
+    process.exit(0); // Hentikan eksekusi agar user bisa restart
+  }
 
   // Banner
   console.log('\n ' + chalk.bgBlue.white.bold(' PABI ') + chalk.bgWhite.black(' DATABASE ') + chalk.dim(` v${packageJson.version}`));
