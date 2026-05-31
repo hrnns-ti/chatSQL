@@ -55,10 +55,10 @@ async function runNLIDB(userInput: string) {
   try {
     // TRANSLASI (AI ENGINE)
     const currSchema = await getSchema()
-    const { reply, bbn } = await PabiAI.process(userInput, currSchema);
-    // console.log(chalk.yellow(`\n[DEBUG RAW BBN DARI AI]: ${bbn}`));
+    const { reply, blinc } = await PabiAI.process(userInput, currSchema);
+    // console.log(chalk.yellow(`\n[DEBUG RAW BLINC DARI AI]: ${blinc}`));
     
-    if (!bbn) {
+    if (!blinc) {
       spinner.stop();
       if (reply) {
         console.log(`\n${theme.aiLabel((' PABI ') + ('❯ '))} ${theme.aiText(reply.trim())}`);
@@ -71,7 +71,7 @@ async function runNLIDB(userInput: string) {
 
     // KOMPILASI (LEXER & PARSER)
     spinner.text = chalk.cyan('Menganalisis sintaks BLINC...');
-    const tokens = tokenize(bbn);
+    const tokens = tokenize(blinc);
     const semantic = new SemanticRules(tokens);
     const ast = semantic.parser();
 
@@ -96,34 +96,38 @@ async function runNLIDB(userInput: string) {
 
     // EKSEKUSI (GENERATOR & SUPABASE)
     spinner.text = chalk.cyan('Menghubungi database...');
-    const result = await executeNLIDB(ast);
+    const result = await executeNLIDB(ast, currSchema);
     spinner.succeed(theme.success('Operasi Selesai'));
 
     // Render Data
     if (Array.isArray(result) && result.length > 0) {
 
-      const flatResult = result.map((row: any) => {
-        const flatRow: any = {};
-        
-        for (const key in row) {
-          const value = row[key];
-          
-          // Jika value adalah object relasi (hasil JOIN)
-          if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-            // Bongkar isi object-nya dan gabungkan ke luar
-            for (const nestedKey in value) {
-              // Format nama kolom: NAMA_TABEL_RELASI_NAMA_KOLOM (contoh: JURUSAN_NAMA_JURUSAN)
-              const newColName = `${key.toUpperCase()}_${nestedKey.toUpperCase()}`;
-              flatRow[newColName] = value[nestedKey];
-            }
+      const flattenObject = (obj: any, parentName = ''): any => {
+        let flattened: any = {};
+        for (const key in obj) {
+          if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+            // Daripada menumpuk seluruh prefix, kita hanya lempar nama parent saat ini saja (misal: 'fakultas')
+            const nested = flattenObject(obj[key], key);
+            flattened = { ...flattened, ...nested };
           } else {
-            // Data normal biasa
-            flatRow[key.toUpperCase()] = value;
+            if (parentName === '') {
+              flattened[key.toUpperCase()] = obj[key];
+            } else {
+              let cleanKey = key.toUpperCase();
+              const cleanParent = parentName.toUpperCase();
+              
+              if (cleanKey.includes(cleanParent)) {
+                cleanKey = cleanKey.replace(`_${cleanParent}`, '').replace(`${cleanParent}_`, '');
+              }
+        
+              flattened[`${cleanParent}_${cleanKey}`] = obj[key];
+            }
           }
         }
-        return flatRow;
-      });
+        return flattened;
+      };
 
+      const flatResult = result.map((row: any) => flattenObject(row));
       const headers = Object.keys(flatResult[0]);
       
       const table = new Table({

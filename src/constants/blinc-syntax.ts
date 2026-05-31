@@ -1,6 +1,4 @@
-// ==========================================
-// 1. KAMUS ALIAS (LEXICON)
-// ==========================================
+// KAMUS ALIAS (LEXICON)
 export const keywords: Record<string, string> = {
   // DDL & CRUD Inti
   "BUAT_TABEL": "TKN_CREATE_TABLE",
@@ -68,18 +66,17 @@ export const symbols: Record<string, string> = {
 };
 
 
-// ==========================================
-// 2. PANDUAN AI (NATURAL LANGUAGE RULES)
-// ==========================================
+// PANDUAN AI (NATURAL LANGUAGE RULES)
 export const aiPromptRules = `
-⚠️ BUKU PANDUAN SINTAKS BBN (WAJIB DIIKUTI 100%):
+⚠️ BUKU PANDUAN SINTAKS BLINC (WAJIB DIIKUTI 100%):
 
-1. ATURAN OPERASI DASAR:
-   - AMBIL (Select): AMBIL nama_kolom TABEL nama_tabel
+1. ATURAN OPERASI DASAR (AMBIL/SELECT):
+   - Satu kolom: AMBIL nama_kolom TABEL nama_tabel
+   - Banyak kolom: AMBIL kolom1, kolom2 TABEL nama_tabel (WAJIB pakai koma)
+   - Semua kolom: AMBIL SEMUA TABEL nama_tabel
    - TAMBAH (Insert): TAMBAH TABEL nama_tabel
    - UBAH (Update): UBAH TABEL nama_tabel
    - HAPUS (Delete): HAPUS TABEL nama_tabel
-   - Jika ingin semua kolom gunakan: AMBIL SEMUA TABEL nama_tabel
 
 2. ATURAN ISI DATA (KHUSUS TAMBAH & UBAH):
    - Gunakan kata kunci NILAI (bukan KOLOM).
@@ -91,8 +88,9 @@ export const aiPromptRules = `
    - Jika banyak kondisi: FILTER kolom1 SAMA_DENGAN 'x' DAN kolom2 LEBIH_BESAR 'y'
    - Khusus ADALAH_KOSONG, jangan beri nilai di belakangnya: FILTER nama_kolom ADALAH_KOSONG
 
-4. ATURAN RELASI:
-   - Format: GABUNG_TABEL nama_tabel_target
+4. ATURAN RELASI (JOIN):
+   - Format 1 target: GABUNG_TABEL tabel_target
+   - Format multi target: GABUNG_TABEL tabel_a, tabel_b (WAJIB dipisah koma)
    - JANGAN tambahkan kata TABEL lagi setelah kata GABUNG_TABEL.
 
 5. ATURAN PENGURUTAN & BATASAN:
@@ -113,6 +111,6 @@ export const aiPromptRules = `
 ⚠️ ATURAN MUTLAK (JIKA DILANGGAR, SISTEM HANCUR):
 - DILARANG KERAS menggunakan bahasa SQL (SELECT, INSERT, UPDATE, =, ;, dll).
 - Nilai teks/string WAJIB diapit kutip tunggal: 'nilai'.
-- WAJIB BUNGKUS HASIL AKHIR HANYA DENGAN TAG [BBN] ... [/BBN]. DILARANG menggunakan tag lain.
+- WAJIB BUNGKUS HASIL AKHIR HANYA DENGAN TAG [BLINC] ... [/BLINC]. DILARANG menggunakan tag lain.
 - Semua nama tabel dan nama kolom WAJIB ditulis dengan huruf kecil (lowercase) dan tanpa spasi (gunakan underscore).
 `;

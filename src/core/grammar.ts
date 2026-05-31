@@ -1,7 +1,7 @@
 import { grammarRules, queryAST } from "./types.js";
 
 export const rules: grammarRules[] = [
-  // 1. ATURAN COMMAND (Ditambah Penjebak Nama Tabel DDL)
+  // ATURAN COMMAND (Ditambah Penjebak Nama Tabel DDL)
   {
     name: "CommandRule",
     trigger: ["TKN_SELECT", "TKN_INSERT", "TKN_UPDATE", "TKN_DELETE", "TKN_CREATE_TABLE", "TKN_DROP_TABLE", "TKN_UPSERT", "TKN_RPC"],
@@ -77,11 +77,23 @@ export const rules: grammarRules[] = [
     name: "JoinRule",
     trigger: ["TKN_JOIN"],
     handler: (tokens: any[], i: number, ast: queryAST) => {
-      if (tokens[i + 1]) {
-        ast.joins.push({ type: "RELATION", targetTable: tokens[i + 1].value });
-        return i + 1;
+      let curr = i + 1;
+      
+      while (tokens[curr]) {
+        if (tokens[curr].type === "TKN_IDENTIFIER") {
+          ast.joins.push({ type: "RELATION", targetTable: tokens[curr].value });
+          curr++;
+          
+          if (tokens[curr] && tokens[curr].type === "TKN_COMMA") {
+            curr++;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
       }
-      return i;
+      return curr - 1; 
     }
   },
 

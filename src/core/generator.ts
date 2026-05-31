@@ -1,11 +1,9 @@
 import type { queryAST } from "./types.js";
 import { supabase } from "../net/supabase.js";
 
-export async function executeNLIDB(ast: queryAST) {
+export async function executeNLIDB(ast: queryAST, dbSchema: any[] = []) {
   
-  // 1. TAHAP DDL (CREATE/DROP TABLE) & RPC
-  
-  // DDL membutuhkan raw SQL execution via RPC (karena PostgREST tidak support DDL native)
+  // TAHAP DDL (CREATE/DROP TABLE) & RPC
   if (ast.operation === "CREATE_TABLE") {
     let sql = `CREATE TABLE ${ast.table} (`;
     const colDefs = ast.definitions.map(d => {
@@ -16,7 +14,6 @@ export async function executeNLIDB(ast: queryAST) {
     });
     sql += colDefs.join(", ") + ");";
     
-    // Asumsi: Kamu sudah membuat fungsi 'execute_sql' di Supabase Database-mu
     return await supabase.rpc('execute_sql', { query_text: sql });
   }
 
@@ -29,11 +26,11 @@ export async function executeNLIDB(ast: queryAST) {
     return await supabase.rpc(ast.functionName, ast.payload || {});
   }
 
-  // 2. INISIALISASI ENTITAS (Tabel Target)
+  // INISIALISASI ENTITAS (Tabel Target)
   if (!ast.table) throw new Error("TABLE_NOT_FOUND");
   let query: any = supabase.from(ast.table.trim());
 
-  // 3. TAHAP OPERASI INTI (CRUD)
+  // TAHAP OPERASI INTI (CRUD)
   switch (ast.operation) {
     case "SELECT":
       let selectStr = ast.columns.length > 0 ? ast.columns.join(", ") : "*";
@@ -43,9 +40,59 @@ export async function executeNLIDB(ast: queryAST) {
         selectStr = selectStr.replace(firstCol, `DISTINCT ${firstCol}`);
       }
 
-      // Inject RELASI (Joins)
+      // 🔥 2. SMART GRAPH-AWARE JOIN BUILDER
       if (ast.joins && ast.joins.length > 0) {
-        ast.joins.forEach((j: any) => { selectStr += `, ${j.targetTable}(*)`; });
+        const joinTables = ast.joins.map(j => j.targetTable);
+        // Ambil struktur kolom dari tabel utama
+        const baseColumns = dbSchema.find(t => t.table_name === ast.table)?.columns || [];
+        
+        const tree: Record<string, string[]> = {};
+        const directJoins: string[] = [];
+        const indirectJoins: string[] = [];
+        
+        // Tahap 1: Pisahkan mana yang direct dan indirect join
+        joinTables.forEach(target => {
+          // Cek apakah tabel target ada sebagai foreign key di tabel utama
+          const hasDirectRelation = baseColumns.some((col: string) => col.includes(target));
+          if (hasDirectRelation) {
+            directJoins.push(target);
+            tree[target] = [];
+          } else {
+            indirectJoins.push(target);
+          }
+        });
+
+        // Tahap 2: Petakan indirect joins (nested) ke tabel perantara yang tepat
+        indirectJoins.forEach(indirect => {
+          let placed = false;
+          for (const direct of directJoins) {
+            const directCols = dbSchema.find(t => t.table_name === direct)?.columns || [];
+            const canNest = directCols.some((col: string) => col.includes(indirect));
+            if (canNest) {
+              if (!tree[direct]) tree[direct] = []; 
+              tree[direct].push(indirect);
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            // Fallback jika tidak ketemu
+            directJoins.push(indirect);
+            tree[indirect] = [];
+          }
+        });
+
+        // Tahap 3: Rangkai string select
+        const joinStrings = directJoins.map(direct => {
+          const nested = tree[direct];
+          if (nested && nested.length > 0) {
+            const nestedStr = nested.map(n => `${n}(*)`).join(", ");
+            return `${direct}(*, ${nestedStr})`; // Hasilnya jadi: jurusan(*, fakultas(*))
+          }
+          return `${direct}(*)`;
+        });
+
+        selectStr += `, ${joinStrings.join(", ")}`;
       }
       
       if (ast.modifiers?.includes("count")) {
@@ -72,7 +119,7 @@ export async function executeNLIDB(ast: queryAST) {
       break;
   }
 
-  // 4. TAHAP FILTERING (WHERE CLAUSE)
+  // TAHAP FILTERING (WHERE CLAUSE)
   if (ast.where && ast.where.length > 0) {
     ast.where.forEach((filter) => {
       switch (filter.operator) {
@@ -84,13 +131,10 @@ export async function executeNLIDB(ast: queryAST) {
         case "!=": query = query.neq(filter.column, filter.value); break;
         case "is": query = query.is(filter.column, filter.value); break;
         
-        // AUTO-WILDCARD untuk teks
         case "ilike": query = query.ilike(filter.column, `%${filter.value}%`); break;
         case "like": query = query.like(filter.column, `%${filter.value}%`); break;
         
-        // ARRAY OPERATORS
         case "in": 
-          // Memecah string 'ilkom, mesin' menjadi array ['ilkom', 'mesin']
           const inArr = String(filter.value).split(',').map(s => s.trim());
           query = query.in(filter.column, inArr); 
           break;
@@ -106,7 +150,7 @@ export async function executeNLIDB(ast: queryAST) {
     });
   }
 
-  // 5. TAHAP MODIFIERS (Order, Limit, Range, dll)
+  // TAHAP MODIFIERS (Order, Limit, Range, dll)
   if (ast.orderBy) {
     query = query.order(ast.orderBy.column, { ascending: ast.orderBy.mode === "ASC" });
   }
@@ -120,7 +164,7 @@ export async function executeNLIDB(ast: queryAST) {
     if (ast.modifiers.includes("maybeSingle")) query = query.maybeSingle();
   }
 
-  // 6. EKSEKUSI FINAL
+  // EKSEKUSI FINAL
   const { data, error, count } = await query;
 
   if (error) throw error;

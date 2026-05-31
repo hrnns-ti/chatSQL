@@ -7,7 +7,7 @@ export class SemanticRules {
 
   constructor(tokens: any[]) {
     this.tokens = tokens;
-    // Inisialisasi kerangka AST yang bersih
+    // Inisialisasi kerangka AST
     this.ast = {
       operation: null,
       columns: [],
@@ -24,7 +24,7 @@ export class SemanticRules {
     for (let i = 0; i < this.tokens.length; i++) {
       const token = this.tokens[i];
       
-      // 1. Cek apakah token saat ini adalah "Trigger" dari aturan Grammar (BBN)
+      // Cek token saat ini adalah "Trigger" dari aturan Grammar
       const rule = rules.find(r => r.trigger.includes(token.type));
 
       if (rule) {
@@ -32,12 +32,12 @@ export class SemanticRules {
         i = rule.handler(this.tokens, i, this.ast);
       } 
       
-      // 2. Tangkap "Bintang" (Mengambil semua kolom)
+      // 2. Tangkap "*" (Mengambil semua kolom)
       else if (token.type === "TKN_STAR") {
         this.ast.columns = ["*"];
       }
       
-      // 3. Tangkap Nama Kolom yang mau diambil (SELECT ... FROM)
+      // Tangkap Nama Kolom yang mau diambil (SELECT ... FROM)
       // Logika: Jika token adalah IDENTIFIER, operasinya sudah terdeteksi SELECT,
       // dan kita BELUM bertemu tabel target, maka token ini PASTI nama kolom.
       else if (
